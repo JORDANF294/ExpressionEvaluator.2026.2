@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Metadata;
+using System.Globalization;
+
 
 namespace Backend;
 
@@ -7,20 +9,60 @@ public static class ExpressionEvaluator
 {
     public static double Evalute(string infix) => EvalutePostfix(ToPostfix(infix));
 
+    /*public static double Evalute(string infix) // prueba para revisar el funcionamiento de los decimales en ToPostfix
+    {
+        var postfix = ToPostfix(infix);
+
+        Console.WriteLine($"Postfix: {postfix}");
+
+        return EvalutePostfix(postfix);
+    }*/
+
     private static string ToPostfix(string infix)
     {
         var posfix = string.Empty;
         var stack = new Stack<char>();
-        foreach (var item in infix)
+
+        // se cambia el foreach por un for para poder acceder al indice del caracter
+        for (int i = 0; i < infix.Length; i++)
         {
-            if (IsOperator(item))
+            char item = infix[i]; // se obtiene el caracter en la posicion i
+
+            if (char.IsDigit(item) || item == '.') // se verifica si el caracter es un digito y se maneja el caso de los numeros de mas de un digito
+            {
+                string number = "";
+                bool hasDecimalPoint = false;
+
+                while (i < infix.Length) // se recorre la expresion mientras se encuentren digitos o un solo punto decimal
+                {
+                    if (char.IsDigit(infix[i]))
+                    {
+                        number += infix[i];
+                        i++;
+                    }
+                    else if (infix[i] == '.' && !hasDecimalPoint)
+                    {
+                        number += infix[i];
+                        hasDecimalPoint = true;
+                        i++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                posfix += number + " ";
+                i--; // para ajustar el indice para el siguiente caracter
+            }
+            else if (IsOperator(item))
             {
                 if (item == ')')
                 {
                     var ope = stack.Pop();
                     while(ope != '(')
                     {
-                        posfix += ope;
+                        posfix += ope + " ";
                         ope = stack.Pop();
                     }
                 }
@@ -38,23 +80,22 @@ public static class ExpressionEvaluator
                         }
                         else
                         {
-                            posfix += stack.Pop();
+                            posfix += stack.Pop() + " ";
                             stack.Push(item);
                         }
                     }
                 }
             }
-            else
-            {
-                posfix += item;
-            }
         }
-        do
+        
+        while (stack.Count != 0)
         {
-            posfix += stack.Pop();
-        } while (stack.Count != 0);
-        return posfix;
+            posfix += stack.Pop() + " ";
+        } 
+        
+        return posfix.Trim();
     }
+
 
     private static int PriorityStack(char op) => op switch
     {
@@ -83,6 +124,26 @@ public static class ExpressionEvaluator
     private static double EvalutePostfix(string postfix)
     {
         var stack = new Stack<double>();
+
+        var tokens = postfix.Split(' ');
+
+        foreach (var token in tokens)
+        {
+            if (token.Length == 1 && IsOperator(token[0]))
+            {
+                var ope2 = stack.Pop();
+                var ope1 = stack.Pop();
+
+                stack.Push(Calculate(ope1, ope2, token[0]));
+            }
+            else
+            {
+                //stack.Push(double.Parse(token));
+                stack.Push(double.Parse(token, CultureInfo.InvariantCulture)); // utiliza el . como separador de decimales
+            }
+        }
+
+        /* codigo original
         foreach (var item in postfix)
         {
             if (IsOperator(item))
@@ -95,7 +156,8 @@ public static class ExpressionEvaluator
             {
                 stack.Push(char.GetNumericValue(item));
             }
-        }
+        }*/
+
         return stack.Pop();
     }
 
